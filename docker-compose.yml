@@ -1,0 +1,35 @@
+services:
+  api:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    # Loads PORT, BASE_URL, MAX_UPLOAD_SIZE_MB, FILE_EXPIRY, etc. (see .env.example)
+    env_file:
+      - .env
+    # Pin storage to a single data dir so one volume persists both the DB and uploads.
+    environment:
+      DB_PATH: /app/data/sharejer.db
+      UPLOADS_DIR: /app/data/uploads
+    volumes:
+      - sharejer_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Frontend: Svelte SPA served by nginx, which also proxies /api to the api
+  # service (so the browser stays same-origin — no CORS). Share links / QR
+  # codes point here, so keep BASE_URL in .env set to this origin.
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  sharejer_data:

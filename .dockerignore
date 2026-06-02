@@ -1,0 +1,7 @@
+server
+sharejer.db
+uploads/
+Dockerfile
+.dockerignore
+.env
+.git

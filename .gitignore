@@ -1,0 +1,15 @@
+# Compiled binary
+/server
+
+# Local data — never commit
+/uploads/
+sharejer.db
+*.db
+
+# Local environment config (may contain secrets)
+.env
+
+# OS / editor cruft
+.DS_Store
+
+AGENTS.md

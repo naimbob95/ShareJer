@@ -15,15 +15,19 @@
   const shareMatch = $derived(path.match(/^\/f\/(.+)$/))
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-100 dark:from-slate-950 dark:to-indigo-950">
-  <header class="mx-auto flex max-w-2xl items-center gap-2 px-6 pt-10 pb-2">
-    <a href="/" class="flex items-center gap-2 text-2xl font-bold text-slate-800 dark:text-slate-100">
-      <span class="grid size-9 place-items-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">📤</span>
-      Share Jer
+<div class="flex min-h-screen flex-col">
+  <header class="mx-auto w-full max-w-xl px-6 pt-9 pb-2">
+    <a href="/" class="rise inline-flex items-center gap-3">
+      <span class="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-[#ff7a4d] to-[#e04e26] text-white shadow-lg shadow-[#e04e26]/30">
+        <svg viewBox="0 0 24 24" fill="none" class="size-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 19V6" /><path d="m5 12 7-7 7 7" />
+        </svg>
+      </span>
+      <span class="font-display text-[1.7rem] font-semibold leading-none tracking-tight">Share Jer</span>
     </a>
   </header>
 
-  <main class="mx-auto max-w-2xl px-6 py-6">
+  <main class="mx-auto w-full max-w-xl flex-1 px-6 py-6">
     {#if shareMatch}
       <Download id={shareMatch[1]} />
     {:else}
@@ -31,7 +35,9 @@
     {/if}
   </main>
 
-  <footer class="mx-auto max-w-2xl px-6 py-8 text-center text-sm text-slate-400">
-    Upload a file, share the link. Files may expire automatically.
+  <footer class="mx-auto w-full max-w-xl px-6 py-8">
+    <p class="text-center text-sm text-muted">
+      Upload a file, share the link — it expires on its own.
+    </p>
   </footer>
 </div>

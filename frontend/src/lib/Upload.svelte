@@ -11,6 +11,8 @@
   let config = $state<ServerConfig | null>(null)
   let deleting = $state(false)
   let deleted = $state(false)
+  let dragging = $state(false)
+  let fileInput = $state<HTMLInputElement>()
 
   // Load the server's limits once, on mount, to display them.
   $effect(() => {
@@ -20,6 +22,28 @@
   })
 
   const selected = $derived(files?.[0] ?? null)
+
+  // Drag & drop. dragover must preventDefault so the browser fires drop instead
+  // of navigating to the file. On drop we copy dataTransfer.files into `files`
+  // (the same FileList the hidden input binds to), so the rest of the flow is
+  // identical to clicking and picking.
+  function onDragOver(event: DragEvent) {
+    event.preventDefault()
+    dragging = true
+  }
+
+  function onDragLeave() {
+    dragging = false
+  }
+
+  function onDrop(event: DragEvent) {
+    event.preventDefault()
+    dragging = false
+    const dropped = event.dataTransfer?.files
+    if (dropped && dropped.length > 0) {
+      files = dropped
+    }
+  }
 
   async function submit(event: Event) {
     event.preventDefault()
@@ -73,124 +97,115 @@
   }
 </script>
 
-<div class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-200/60 dark:bg-slate-900 dark:shadow-none dark:ring-1 dark:ring-slate-800 sm:p-8">
+<div class="card rise p-6 sm:p-8">
   {#if !result}
-    <form onsubmit={submit} class="space-y-5">
+    <form onsubmit={submit} class="space-y-6">
       <div>
-        <h1 class="text-xl font-semibold text-slate-800 dark:text-slate-100">Share a file</h1>
-        <p class="mt-1 text-sm text-slate-500">Pick a file, optionally lock it with a password.</p>
+        <p class="eyebrow">Send anything</p>
+        <h1 class="mt-1.5 text-3xl">Share a file</h1>
+        <p class="mt-2 text-sm text-muted">Pick a file, optionally lock it with a password.</p>
         {#if config}
-          <div class="mt-3 flex flex-wrap gap-2 text-xs">
-            <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              ⬆️ Max {config.maxUploadMB} MB
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="chip">
+              <svg viewBox="0 0 24 24" fill="none" class="size-3.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6" /><path d="m5 12 7-7 7 7" /></svg>
+              Max {config.maxUploadMB} MB
             </span>
-            <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <span class="chip">
               {#if config.expirySeconds > 0}
-                ⏱️ Expires after {humanizeDuration(config.expirySeconds)}
+                <svg viewBox="0 0 24 24" fill="none" class="size-3.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                Expires in {humanizeDuration(config.expirySeconds)}
               {:else}
-                ♾️ No expiry
+                No expiry
               {/if}
             </span>
           </div>
         {/if}
       </div>
 
-      <label
-        class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-6 py-10 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-slate-700 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/30"
+      <button
+        type="button"
+        onclick={() => fileInput?.click()}
+        ondragover={onDragOver}
+        ondragleave={onDragLeave}
+        ondrop={onDrop}
+        class="group flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-11 text-center transition {dragging
+          ? 'scale-[1.01] border-accent bg-accent-soft/60'
+          : 'border-line bg-[#fffdfb] hover:border-accent hover:bg-accent-soft/40'}"
       >
-        <span class="text-3xl">📁</span>
-        {#if selected}
-          <span class="font-medium text-slate-700 dark:text-slate-200">{selected.name}</span>
-          <span class="text-sm text-slate-400">{formatSize(selected.size)}</span>
+        <span class="grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent-deep transition {dragging ? 'scale-110' : 'group-hover:scale-105'}">
+          <svg viewBox="0 0 24 24" fill="none" class="size-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" /></svg>
+        </span>
+        {#if dragging}
+          <span class="font-medium text-accent-deep">Drop your file to upload</span>
+          <span class="text-xs text-muted">release anywhere in this box</span>
+        {:else if selected}
+          <span class="max-w-full truncate px-2 font-medium text-ink">{selected.name}</span>
+          <span class="text-xs font-medium text-muted">{formatSize(selected.size)} · click to change</span>
         {:else}
-          <span class="font-medium text-slate-600 dark:text-slate-300">Click to choose a file</span>
-          <span class="text-sm text-slate-400">or drag it here</span>
+          <span class="font-medium text-ink">Click to choose a file</span>
+          <span class="text-xs text-muted">or drag &amp; drop it here</span>
         {/if}
-        <input type="file" class="hidden" bind:files />
-      </label>
+      </button>
+      <input bind:this={fileInput} type="file" class="hidden" bind:files />
 
       <div>
-        <label for="pw" class="mb-1 block text-sm font-medium text-slate-600 dark:text-slate-300">
-          Password <span class="font-normal text-slate-400">(optional)</span>
+        <label for="pw" class="mb-1.5 block text-sm font-medium text-ink">
+          Password <span class="font-normal text-muted">· optional</span>
         </label>
-        <input
-          id="pw"
-          type="password"
-          bind:value={password}
-          placeholder="Leave blank for no password"
-          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-        />
+        <input id="pw" type="password" bind:value={password} placeholder="Leave blank for no password" class="field" />
       </div>
 
       {#if error}
-        <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>
+        <p class="alert">{error}</p>
       {/if}
 
-      <button
-        type="submit"
-        disabled={uploading}
-        class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <button type="submit" disabled={uploading} class="btn-primary w-full">
         {uploading ? 'Uploading…' : 'Upload & get link'}
       </button>
     </form>
   {:else if deleted}
-    <div class="space-y-4 text-center">
-      <span class="text-4xl">🗑️</span>
-      <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100">File deleted</h2>
-      <p class="text-sm text-slate-500">The share link no longer works.</p>
-      <button
-        onclick={reset}
-        class="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
-      >
-        ← Share another file
-      </button>
+    <div class="space-y-4 py-6 text-center">
+      <span class="mx-auto grid size-14 place-items-center rounded-full bg-accent-soft text-accent-deep">
+        <svg viewBox="0 0 24 24" fill="none" class="size-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+      </span>
+      <h2 class="text-2xl">File deleted</h2>
+      <p class="text-sm text-muted">The share link no longer works.</p>
+      <button onclick={reset} class="btn-ghost mx-auto">← Share another file</button>
     </div>
   {:else}
-    <div class="space-y-5 text-center">
+    <div class="space-y-6 text-center">
       <div>
-        <span class="text-4xl">✅</span>
-        <h2 class="mt-2 text-xl font-semibold text-slate-800 dark:text-slate-100">Your file is ready to share</h2>
+        <span class="mx-auto grid size-14 place-items-center rounded-full bg-accent-soft text-accent-deep">
+          <svg viewBox="0 0 24 24" fill="none" class="size-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+        </span>
+        <h2 class="mt-3 text-2xl">Ready to share</h2>
+        <p class="mt-1 text-sm text-muted">Scan the code or copy the link.</p>
       </div>
 
-      <div class="flex flex-col items-center gap-3">
-        <img
-          src={qrUrl(result.id)}
-          alt="QR code for the share link"
-          class="size-44 rounded-xl bg-white p-2 ring-1 ring-slate-200 dark:ring-slate-700"
-        />
+      <div class="flex flex-col items-center gap-4">
+        <div class="rounded-2xl border border-line bg-white p-3 shadow-sm">
+          <img src={qrUrl(result.id)} alt="QR code for the share link" class="size-40 rounded-lg" />
+        </div>
         <div class="flex w-full items-center gap-2">
-          <input
-            readonly
-            value={result.shareUrl}
-            class="flex-1 truncate rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-          />
-          <button
-            onclick={copyLink}
-            class="shrink-0 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
+          <input readonly value={result.shareUrl} class="field flex-1 truncate text-left text-sm" />
+          <button onclick={copyLink} class="btn-primary shrink-0 px-4">{copied ? 'Copied!' : 'Copy'}</button>
         </div>
       </div>
 
       {#if error}
-        <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>
+        <p class="alert text-left">{error}</p>
       {/if}
 
-      <div class="flex items-center justify-between pt-1">
-        <button
-          onclick={reset}
-          class="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
-        >
-          ← Share another file
+      <div class="flex items-center justify-between border-t border-line pt-4">
+        <button onclick={reset} class="text-sm font-semibold text-accent-deep transition hover:text-accent">
+          ← Share another
         </button>
         <button
           onclick={deleteCurrent}
           disabled={deleting}
-          class="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-60 dark:text-red-400"
+          class="text-sm font-semibold text-muted transition hover:text-[#b4341a] disabled:opacity-50"
         >
-          {deleting ? 'Deleting…' : '🗑️ Delete file'}
+          {deleting ? 'Deleting…' : 'Delete file'}
         </button>
       </div>
     </div>
